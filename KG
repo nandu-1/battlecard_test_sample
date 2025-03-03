@@ -45,7 +45,7 @@ import re
 
 def extract_amounts_and_accounts(text, G):
     amount_pattern = r"(?i)(?:Rs|INR|USD|₹|\$)\s?\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?"  # Detects ₹500, Rs 5,000, $100.50
-    account_pattern = r"\b\d{9,16}\b"  # Detects 9-16 digit Account Numbers
+    account_pattern = r"(?i)(?:(?:account(?: ending in| number| no| for the| linked to)?)\s*(\d{4,16}))"
 
     amounts = re.findall(amount_pattern, text)
     accounts = re.findall(account_pattern, text)
@@ -115,3 +115,14 @@ masked_text, _ = mask_entities(new_log_text, KG, "Company", "company")
 masked_text, _ = mask_entities(masked_text, KG, "Person", "person")
 
 print("Masked New Call Log:\n", masked_text)
+
+import re
+
+def remove_dates(text):
+    # Regex pattern to remove dates
+    date_pattern = r"\b(\d{2}\/\d{2,4})\b|\b(\d{4}\/\d{2})\b"
+    
+    # Replace all matching date patterns with an empty string
+    cleaned_text = re.sub(date_pattern, "", text)
+    
+    return cleaned_text
