@@ -1,0 +1,45 @@
+import re
+
+# Define patterns
+keyword_pattern = r"(?i)(?:(?:account(?: ending in| ended as| number| no| for the| linked to)?)\s*)(\b\d{4,16}\b)"
+exclude_pattern = r"[\$-]\d{4,16}|\d{4,16}%"
+
+# Compile combined regex using OR (|)
+account_pattern = re.compile(f"{keyword_pattern}|{exclude_pattern}")
+
+def mask_sensitive_info(call_note):
+    masked_note = call_note
+    mapping = {}
+
+    def replace_match(match):
+        # If the match comes from the keyword pattern, mask only the number
+        if match.group(1):  # Group 1 is from keyword pattern
+            account_number = match.group(1)
+            placeholder = f"MASK_{len(mapping)}"
+            mapping[placeholder] = account_number  # Store mapping
+            return match.group(0).replace(account_number, placeholder)  # Replace only number
+
+        # If the match comes from exclude pattern, do nothing (return original match)
+        return match.group(0)
+
+    # Perform replacement
+    masked_note = account_pattern.sub(replace_match, masked_note)
+
+    return masked_note, mapping
+
+# Example Input
+preprocessed_note = """
+The customer mentioned their account ending in 123456789012. 
+Another issue with account ended as 987654321098. 
+We verified account number 4567891234 was accessed fraudulently.
+However, the balance is $5000 and the interest rate is 2.5%.
+Another case where account linked to 987654321111 showed fraud.
+The discount was 10% but account ended as 999988887777.
+"""
+
+# Masking account numbers
+masked_note, mapping = mask_sensitive_info(preprocessed_note)
+
+# Output results
+print("Masked Note:", masked_note)
+print("Mapping:", mapping)
