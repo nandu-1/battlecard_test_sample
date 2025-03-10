@@ -3,9 +3,10 @@ import re
 # Define patterns
 keyword_pattern = r"(?i)(?:(?:account(?: ending in| ended as| number| no| for the| linked to)?)\s*)(\b\d{4,16}\b)"
 exclude_pattern = r"[\$-]\d{4,16}|\d{4,16}%"
+standalone_number_pattern = r"\b\d{4,16}\b"  # Standalone numbers (to mask if not excluded)
 
-# Compile combined regex using OR (|)
-account_pattern = re.compile(f"{keyword_pattern}|{exclude_pattern}")
+# Compile regex patterns
+account_pattern = re.compile(f"{keyword_pattern}|{exclude_pattern}|{standalone_number_pattern}")
 
 def mask_sensitive_info(call_note):
     masked_note = call_note
@@ -13,14 +14,21 @@ def mask_sensitive_info(call_note):
 
     def replace_match(match):
         # If the match comes from the keyword pattern, mask only the number
-        if match.group(1):  # Group 1 is from keyword pattern
+        if match.group(1):  
             account_number = match.group(1)
             placeholder = f"MASK_{len(mapping)}"
-            mapping[placeholder] = account_number  # Store mapping
-            return match.group(0).replace(account_number, placeholder)  # Replace only number
+            mapping[placeholder] = account_number
+            return match.group(0).replace(account_number, placeholder)
 
-        # If the match comes from exclude pattern, do nothing (return original match)
-        return match.group(0)
+        # If the match comes from exclusion pattern, do nothing (return original match)
+        if re.match(exclude_pattern, match.group(0)):
+            return match.group(0)
+
+        # If it's a standalone number and not excluded, mask it
+        standalone_number = match.group(0)
+        placeholder = f"MASK_{len(mapping)}"
+        mapping[placeholder] = standalone_number
+        return placeholder
 
     # Perform replacement
     masked_note = account_pattern.sub(replace_match, masked_note)
@@ -33,8 +41,10 @@ The customer mentioned their account ending in 123456789012.
 Another issue with account ended as 987654321098. 
 We verified account number 4567891234 was accessed fraudulently.
 However, the balance is $5000 and the interest rate is 2.5%.
+A suspicious transaction from 789012345678 appeared.
 Another case where account linked to 987654321111 showed fraud.
 The discount was 10% but account ended as 999988887777.
+The customer also provided their ID 456712348765 for verification.
 """
 
 # Masking account numbers
